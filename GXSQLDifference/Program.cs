@@ -1,105 +1,143 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 using System.Xml;
 using System.IO;
 
 namespace GXSQLDifference
 {
-    class Program
+    internal class Program
     {
-       static Dictionary<string, SQLData> preEjecValues;
-       static Dictionary<string, SQLData> postEjecValues;
-        static void Main(string[] args)
+        private static Dictionary<string, SqlData> _preEjecValues;
+        private static Dictionary<string, SqlData> _postEjecValues;
+
+        private static void Main(string[] args)
         {
-            if (args.Length!=0)
+            if (args.Length != 0)
             {
-                string path1 = args[0];
-                string path2 = args[1];
-                preEjecValues = LoadValuesFromXml(path1);
-                postEjecValues = LoadValuesFromXml(path2);
+                var path1 = args[0];
+                var path2 = args[1];
+
+                if (File.Exists(path1))
+                {
+                    _preEjecValues = LoadValuesFromXml(path1);
+                }
+                else
+                {
+                    System.Console.WriteLine("File doesn't exists: " + path1);
+                }
+
+                if (File.Exists(path2))
+                {
+                    _postEjecValues = LoadValuesFromXml(path2);
+                }
+                else
+                {
+                    System.Console.WriteLine("File doesn't exists: " + path2);
+                }
             }
             else
             {
                 LoadData();
             }
-            
-            string result = "objeto;sql;totaltime(dif);count(dif);post average;pre averga;best time (post);worstTime(post)\n";
-            foreach (KeyValuePair<string, SQLData> item in postEjecValues)
+
+            var result = "objeto;sql;totaltime(dif);count(dif);post average;pre averga;best time (post);worstTime(post)\n";
+            foreach (var item in _postEjecValues)
             {
-                //Poner condición para que el value no sea null
-                if (preEjecValues.ContainsKey(item.Key))
-                {                    
-                    
-                    string[] objectAndSql = item.Key.Split('@');
-                    result += objectAndSql[0] + ";" + objectAndSql[1] + ";" + item.Value.GetDifData(preEjecValues[item.Key]);
+                // Poner condición para que el value no sea null
+                if (_preEjecValues.ContainsKey(item.Key))
+                {
+
+                    var objectAndSql = item.Key.Split('@');
+                    result += objectAndSql[0] + ";" + objectAndSql[1] + ";" +
+                              item.Value.GetDifData(_preEjecValues[item.Key]);
                 }
                 else
                 {
-                    string[] objectAndSql = item.Key.Split('@');
+                    var objectAndSql = item.Key.Split('@');
                     result += objectAndSql[0] + ";" + objectAndSql[1] + ";" + item.Value.GetDifData(null);
                 }
                 result += "\n";
             }
+
             System.Console.Write(result);
-            string pathBase2 = @"";
-            FileStream fs = new FileStream(pathBase2 + @"salida.csv", FileMode.Create);
-            StreamWriter sw = new StreamWriter(fs);
+            var fs = new FileStream(@"salida.csv", FileMode.Create);
+            var sw = new StreamWriter(fs);
             sw.Write(result);
             sw.Close();
-
-            }
+        }
 
         private static void LoadData()
         {
-            string pathBase = @"";
-            preEjecValues = LoadValuesFromXml(pathBase + @"DataStoreProviders_20131122152414_a.xml");
-            postEjecValues = LoadValuesFromXml(pathBase + @"DataStoreProviders_20131122155618_d.xml");
+            const string f1 = @"DataStoreProviders_20131122152414_a.xml";
+            const string f2 = @"DataStoreProviders_20131122152414_a.xml";
+
+            if (File.Exists(f1))
+            {
+                _preEjecValues = LoadValuesFromXml(f1);
+            }
+            else
+            {
+                System.Console.WriteLine("File doesn't exists: " + f1);
+            }
+
+            if (File.Exists(f2))
+            {
+                _postEjecValues = LoadValuesFromXml(f2);
+            }
+            else
+            {
+                System.Console.WriteLine("File doesn't exists: " + f2);
+            }
         }
 
-        private static Dictionary<string, SQLData> LoadValuesFromXml(string path)
+        private static Dictionary<string, SqlData> LoadValuesFromXml(string path)
         {
-            Dictionary<string, SQLData> result = new Dictionary<string, SQLData>();
-            XmlDocument doc = new XmlDocument();
+            var result = new Dictionary<string, SqlData>();
+            var doc = new XmlDocument();
             doc.Load(path);
-            foreach (XmlNode node in doc["DataStoreProviders_Information"].GetElementsByTagName("DataStoreProvider"))
+
+            var xmlElement = doc["DataStoreProviders_Information"];
+            if (xmlElement != null)
             {
-                string objectNAme = node.Attributes["Name"].Value;
-                foreach (XmlNode sqlNode in node.ChildNodes)
+                foreach (XmlNode node in xmlElement.GetElementsByTagName("DataStoreProvider"))
                 {
-                    if (sqlNode.Name == "SQLStatement")
+                    if (node.Attributes == null) continue;
+
+                    var objectNAme = node.Attributes["Name"].Value;
+                    foreach (XmlNode sqlNode in node.ChildNodes)
                     {
-                        string sql = sqlNode["SQLStatement"].InnerText;
-                        if (!string.IsNullOrEmpty(sql))
-                        {
-                            SQLData datos = new SQLData();
-                            datos.TotalTime = double.Parse(sqlNode["TotalTime"].InnerText);
-                            datos.WorstTime = double.Parse(sqlNode["WorstTime"].InnerText);
-                            datos.BestTime = double.Parse(sqlNode["BestTime"].InnerText);
-                            datos.Average = double.Parse(sqlNode["AverageTime"].InnerText);
-                            datos.Count = double.Parse(sqlNode["Count"].InnerText);
+                        if (sqlNode.Name != "SQLStatement") continue;
 
+                        var element = sqlNode["SQLStatement"];
+                        if (element == null) continue;
 
-                            string key = objectNAme + "@" + sql;
-                            if (!result.ContainsKey(key))
+                        var sql = element.InnerText;
+                        if (string.IsNullOrEmpty(sql)) continue;
+
+                        var datos = new SqlData
                             {
-                                result.Add(key, datos);
-                                
-                            }
+                                TotalTime = GetDoubleOrDefault(sqlNode, "TotalTime", -1),
+                                WorstTime = GetDoubleOrDefault(sqlNode, "WorstTime", -1),
+                                BestTime = GetDoubleOrDefault(sqlNode, "BestTime", -1),
+                                Average = GetDoubleOrDefault(sqlNode, "AverageTime", -1),
+                                Count = GetDoubleOrDefault(sqlNode, "Count", -1),
+                            };
+
+                        var key = objectNAme + "@" + sql;
+                        if (!result.ContainsKey(key))
+                        {
+                            result.Add(key, datos);
                         }
                     }
-                    
                 }
-                    
-
-                
             }
+
             return result;
         }
 
-        
-
-
+        private static double GetDoubleOrDefault(XmlNode sqlNode, string attrName, int defaultValue)
+        {
+            var xmlElement = sqlNode[attrName];
+            return xmlElement != null ? double.Parse(xmlElement.InnerText) : defaultValue;
+        }
     }
 }

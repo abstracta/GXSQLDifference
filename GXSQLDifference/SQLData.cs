@@ -1,31 +1,32 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace GXSQLDifference
+﻿namespace GXSQLDifference
 {
-    class SQLData
+    internal class SqlData
     {
         public double TotalTime { get; set; }
         public double Count { get; set; }
         public double Average { get; set; }
         public double WorstTime { get; set; }
         public double BestTime { get; set; }
-
-
-        internal string GetDifData(SQLData sQLData)
+        
+        internal string GetDifData(SqlData sqlData)
         {
-            string result = "";
-            if (sQLData!=null)
+            string result;
+            if (sqlData != null)
             {
                 //totaltime(dif);count(dif);post average;pre averga;best time (post);worstTime(post)";
-                result = (TotalTime - sQLData.TotalTime) + ";" + (Count - sQLData.Count) + ";" + Average + ";" + sQLData.Average + ";" + BestTime + ";" + WorstTime;
+                result = (TotalTime - sqlData.TotalTime) + ";" +
+                         (Count - sqlData.Count) + ";" +
+                         Average + ";" +
+                         sqlData.Average + ";" +
+                         ((BestTime < sqlData.BestTime) ? BestTime : sqlData.BestTime) + ";" +
+                         ((WorstTime > sqlData.WorstTime) ? WorstTime : sqlData.WorstTime) + ";";
 
-            }else
+            }
+            else
 	        {
                 result = TotalTime+";"+Count+";"+Average+";"+0+";"+BestTime+";"+WorstTime;
 	        }
+            
             return result;
         }
     }
