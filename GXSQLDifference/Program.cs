@@ -55,6 +55,7 @@ namespace GXSQLDifference
                     var objectAndSql = item.Key.Split('@');
                     result += objectAndSql[0] + ";" + objectAndSql[1] + ";" + item.Value.GetDifData(null);
                 }
+
                 result += "\n";
             }
 
