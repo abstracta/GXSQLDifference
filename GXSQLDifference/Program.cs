@@ -6,37 +6,47 @@ namespace GXSQLDifference
 {
     internal class Program
     {
-        private static Dictionary<string, SqlData> _preEjecValues;
-        private static Dictionary<string, SqlData> _postEjecValues;
+        private static Dictionary<string, SqlData> _preEjecValues = new Dictionary<string, SqlData>();
+        private static Dictionary<string, SqlData> _postEjecValues = new Dictionary<string, SqlData>();
 
         private static void Main(string[] args)
         {
-            if (args.Length != 0)
+            string path1, path2;
+            if (args.Length == 2)
             {
-                var path1 = args[0];
-                var path2 = args[1];
-
-                if (File.Exists(path1))
-                {
-                    _preEjecValues = LoadValuesFromXml(path1);
-                }
-                else
-                {
-                    System.Console.WriteLine("File doesn't exists: " + path1);
-                }
-
-                if (File.Exists(path2))
-                {
-                    _postEjecValues = LoadValuesFromXml(path2);
-                }
-                else
-                {
-                    System.Console.WriteLine("File doesn't exists: " + path2);
-                }
+                path1 = args[0];
+                path2 = args[1];
             }
             else
             {
-                LoadData();
+                const string f1 = "before.xml";
+                const string f2 = "after.xml";
+
+                System.Console.WriteLine("File names missed. Using default file names in current folder: " + f1 + ", " + f2);
+
+                const string path = @"";
+                path1 = path + f1;
+                path2 = path + f2;
+            }
+
+            var succes = LoadData(path1, path2);
+
+            if (!succes)
+            {
+                System.Console.WriteLine("Couldn't load the data");
+                return;
+            }
+
+            if (_preEjecValues.Count == 0)
+            {
+                System.Console.WriteLine("File is empty: " + path1);
+                return;
+            }
+
+            if (_postEjecValues.Count == 0)
+            {
+                System.Console.WriteLine("File is empty: " + path2);
+                return;
             }
 
             var result = "objeto;sql;totaltime(dif);count(dif);post average;pre averga;best time (post);worstTime(post)\n";
@@ -45,7 +55,6 @@ namespace GXSQLDifference
                 // Poner condición para que el value no sea null
                 if (_preEjecValues.ContainsKey(item.Key))
                 {
-
                     var objectAndSql = item.Key.Split('@');
                     result += objectAndSql[0] + ";" + objectAndSql[1] + ";" +
                               item.Value.GetDifData(_preEjecValues[item.Key]);
@@ -66,11 +75,8 @@ namespace GXSQLDifference
             sw.Close();
         }
 
-        private static void LoadData()
+        private static bool LoadData(string f1, string f2)
         {
-            const string f1 = @"DataStoreProviders_20131122152414_a.xml";
-            const string f2 = @"DataStoreProviders_20131122152414_a.xml";
-
             if (File.Exists(f1))
             {
                 _preEjecValues = LoadValuesFromXml(f1);
@@ -78,6 +84,7 @@ namespace GXSQLDifference
             else
             {
                 System.Console.WriteLine("File doesn't exists: " + f1);
+                return false;
             }
 
             if (File.Exists(f2))
@@ -87,7 +94,10 @@ namespace GXSQLDifference
             else
             {
                 System.Console.WriteLine("File doesn't exists: " + f2);
+                return false;
             }
+
+            return true;
         }
 
         private static Dictionary<string, SqlData> LoadValuesFromXml(string path)
